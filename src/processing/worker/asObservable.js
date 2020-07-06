@@ -1,10 +1,9 @@
 import { Subject, of } from "rxjs";
 import { startWith } from "rxjs/operators";
 
-
-// list of current subscriptions
-
 export const asObservable = operation => {
+
+    // list of current subscriptions
     const currentSubs = new Map();
 
     return payload => {
