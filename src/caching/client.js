@@ -29,7 +29,13 @@ async function getWorkerMethod(methodName) {
 }
 
 export const toOperator = (methodName) => {
-    const method$ = from(getWorkerMethod(methodName));
+
+    const method$ = from(getWorkerMethod(methodName)).pipe(
+        map(f => {
+            // Unfocking "observable promise"
+            return (...args) => from(f(...args));
+        })
+    )
 
     const operator = () => src$ => {
         const id = uuidv4();
@@ -38,16 +44,14 @@ export const toOperator = (methodName) => {
             withLatestFrom(method$),
             map(([ notification, method ]) => {
                 // Not a fan of "ObservablePromise"
-                const op = method({ id, ...notification });
-                const obs = from(op);
-                return obs;
+                return method({ id, ...notification });
             }),
             mergeScan((acc, obs) => {
                 return obs || acc
             }, null),
             finalize(async () => {
-                const method = await getWorkerMethod(methodName);
-                await method({ id, kind: "C" });
+                const method = await getWorkerMethod(methodName)
+                method({ id, kind: "C" });
             }),
         )
     }
