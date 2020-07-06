@@ -13,13 +13,13 @@ import { counter } from "./caching";
 
 export default {
     methods: {
-        subToCounter(name) {
+        subToCounter(label) {
             return interval(500).pipe(
                 counter(),
                 finalize(() => {
                     console.log("sub completed inside component");
                 })
-            ).subscribe(val => console.log("clicky", name, val));
+            ).subscribe(val => console.log("clicky", label, val));
         },
         clicky() {
             if (this.sub) {

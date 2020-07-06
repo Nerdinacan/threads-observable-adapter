@@ -8,7 +8,7 @@ expose({
         return src$.pipe(
             scan((acc, val) => acc + val, 0),
             finalize(() => {
-                console.log("counter completed");
+                console.log("counter completed inside worker");
             })
         )
     })

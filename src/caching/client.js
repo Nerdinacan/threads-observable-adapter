@@ -2,43 +2,55 @@
  * Client functions for threads
  */
 
-import { spawn } from "threads"
-import { of, from, pipe } from "rxjs"
-import { pluck, mergeMap, map, materialize, withLatestFrom, mergeScan, finalize } from "rxjs/operators"
+import { spawn, Thread } from "threads"
+import { from, defer } from "rxjs"
+import { shareReplay, filter, pluck, mergeMap, map, materialize, finalize } from "rxjs/operators"
 import { v4 as uuidv4 } from 'uuid'
 
 import TestWorker from "worker-loader!./worker";
 
 
-let _thread;
-async function getWorker() {
-    if (!_thread) {
-        console.log("creating new thread");
-        _thread = await spawn(new TestWorker());
-    }
-    return _thread;
-}
 
-export const toOperator = (methodName) => {
+const thread$ = defer(() => spawn(new TestWorker())).pipe(shareReplay(1));
 
-    const method$ = from(getWorker(methodName)).pipe(
-        pluck(methodName),
-        // Unfucking "observable promise"
+
+
+// Give this a string of the function name on the worker thread instance
+// that you want to call (I'm assuming you're exporting a module and not
+// a function from your worker, otherwise you'll have to modify this)
+
+export const toOperator = (fnName) => {
+
+    // "ObservablePromise" makes it awkward to extract the actual
+    // observable back from the method call. Not a fan. Would prefer
+    // if the function just returned either an observable or a promise
+    // depending on how you explicitly exposed it.
+
+    const method$ = thread$.pipe(
+        pluck(fnName),
         map(f => (...args) => from(f(...args)))
-    )
+    );
 
-    const operator = () => {
+    const operator = () => src$ => {
+
+        // "Hat on a hat"
+        // This looks like something that probably already existed in the
+        // threads transfer layer, but I don't think I have access to the
+        // internals.
         const id = uuidv4();
 
-        return pipe(
-            materialize(),
-            withLatestFrom(method$),
-            map(([ notification, method ]) => method({ id, ...notification })),
-            mergeScan((acc, obs) => obs || acc, null),
-            finalize(async () => {
-                const method = await method$.toPromise();
-                method({ id, kind: "C" });
-            }),
+        return method$.pipe(
+            mergeMap(method => src$.pipe(
+                materialize(),
+                map(notification => method({ id, ...notification })),
+                // first emission will be the observable
+                // we want, rest will be nulls,
+                filter(Boolean),
+                mergeMap(val => val),
+                finalize(async () => {
+                    method({ id, kind: "C" });
+                })
+            ))
         )
     }
 
