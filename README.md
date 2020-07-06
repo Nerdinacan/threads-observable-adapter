@@ -1,4 +1,7 @@
-# vue-threads
+# threads-observable-adapter
+
+Sample project with adapters to allow transparent usage of observables
+exposed by threads.js
 
 ## Project setup
 ```
