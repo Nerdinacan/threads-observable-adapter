@@ -14,8 +14,8 @@ import { counter } from "./caching";
 export default {
     methods: {
         subToCounter(name) {
-            return interval(1000).pipe(
-                counter,
+            return interval(500).pipe(
+                counter(),
                 finalize(() => {
                     console.log("sub completed inside component");
                 })

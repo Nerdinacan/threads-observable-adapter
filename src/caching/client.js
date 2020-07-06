@@ -13,6 +13,7 @@ import TestWorker from "worker-loader!./worker";
 let _thread;
 async function getWorker() {
     if (!_thread) {
+        console.log("creating new thread");
         _thread = await spawn(new TestWorker());
     }
     return _thread;
@@ -27,25 +28,29 @@ async function getWorkerMethod(methodName) {
     return thread[methodName];
 }
 
-export const toOperator = (methodName) => src$ => {
-    const id = uuidv4();
+export const toOperator = (methodName) => {
     const method$ = from(getWorkerMethod(methodName));
 
-    return src$.pipe(
-        materialize(),
-        withLatestFrom(method$),
-        map(([ notification, method ]) => {
-            // Not a fan of "ObservablePromise"
-            const op = method({ id, ...notification });
-            const obs = from(op);
-            return obs;
-        }),
-        mergeScan((acc, obs) => {
-            return obs || acc
-        }, null),
-        finalize(async () => {
-            const method = await getWorkerMethod(methodName);
-            await method({ id, kind: "C" });
-        }),
-    )
+    const operator = () => src$ => {
+        const id = uuidv4();
+        return src$.pipe(
+            materialize(),
+            withLatestFrom(method$),
+            map(([ notification, method ]) => {
+                // Not a fan of "ObservablePromise"
+                const op = method({ id, ...notification });
+                const obs = from(op);
+                return obs;
+            }),
+            mergeScan((acc, obs) => {
+                return obs || acc
+            }, null),
+            finalize(async () => {
+                const method = await getWorkerMethod(methodName);
+                await method({ id, kind: "C" });
+            }),
+        )
+    }
+
+    return operator;
 }
