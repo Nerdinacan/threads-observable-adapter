@@ -9,7 +9,7 @@
 
 import { interval } from 'rxjs';
 import { mergeMap, finalize } from "rxjs/operators";
-import { counter } from "./caching";
+import { counter } from "./processing";
 
 export default {
     methods: {

@@ -24,7 +24,7 @@ export const toOperator = (fnName) => {
     // "ObservablePromise" makes it awkward to extract the actual
     // observable back from the method call. Not a fan. Would prefer
     // if the function just returned either an observable or a promise
-    // depending on how you explicitly exposed it.
+    // depending on how you explicitly decided to expose it.
 
     const method$ = thread$.pipe(
         pluck(fnName),
