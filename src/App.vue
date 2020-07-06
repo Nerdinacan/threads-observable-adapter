@@ -1,28 +1,43 @@
 <template>
-  <div id="app">
-    <img alt="Vue logo" src="./assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
-  </div>
+    <div id="app">
+        <button @click="clicky">Toggle 1</button>
+        <button @click="clickyTwo">Toggle 2</button>
+    </div>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
+
+import { interval } from 'rxjs';
+import { mergeMap, finalize } from "rxjs/operators";
+import { counter } from "./caching";
 
 export default {
-  name: 'App',
-  components: {
-    HelloWorld
-  }
-}
-</script>
+    methods: {
+        subToCounter(name) {
+            return interval(1000).pipe(
+                counter,
+                finalize(() => {
+                    console.log("sub completed inside component");
+                })
+            ).subscribe(val => console.log("clicky", name, val));
+        },
+        clicky() {
+            if (this.sub) {
+                this.sub.unsubscribe();
+                this.sub = null;
+            } else {
+                this.sub = this.subToCounter("clicky");
+            }
+        },
+        clickyTwo() {
+            if (this.sub2) {
+                this.sub2.unsubscribe();
+                this.sub2 = null;
+            } else {
+                this.sub2 = this.subToCounter("clicky Two");
+            }
+        }
+    }
+};
 
-<style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
-}
-</style>
+</script>
